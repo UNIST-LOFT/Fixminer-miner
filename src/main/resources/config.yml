@@ -1,5 +1,5 @@
 java:
-    8home:  /Library/Java/JavaVirtualMachines/jdk1.8.0_181.jdk/Contents/Home
+    8home:  /usr/lib/jvm/java-8-openjdk-amd64
 spinfer:
     home:   /Users/anil.koyuncu/projects/fixminer/spinfer/spinfer.native
 coccinelle:
@@ -8,12 +8,12 @@ coccinelle:
 dataset:
 #    home:   /Users/anilkoyuncu/projects/fixminer/fixminer-core/python/data/gumInputLinux
 
-    inputPath : /Users/anil.koyuncu/projects/release/fixminer-data/patches
-    repo:   /Users/anil.koyuncu/projects/release/fixminer-data/datasets
+    inputPath : /root/Fixminer-miner/fixminer-data/patches
+    repo:   /root/Fixminer-miner/fixminer-data/datasets
 
 fixminer:
     projectType : java
-    datapath: /Users/anil.koyuncu/projects/release/fixminer-data/
+    datapath: /root/Fixminer-miner/fixminer-data/
 
 
 
@@ -26,6 +26,6 @@ fixminer:
 
 
     projectList : fuse
-    inputPath : /Users/anil.koyuncu/projects/release/fixminer-data/patches
-    redisPath : /Users/anil.koyuncu/projects/release/fixminer_source/python/data/redis
+    inputPath : /root/Fixminer-miner/fixminer-data/patches
+    redisPath : /root/Fixminer-miner/python/data/redis
     srcMLPath :  /usr/local/bin/srcml

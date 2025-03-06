@@ -44,7 +44,7 @@ def setLogg():
     root.setLevel(logging.DEBUG)
 
     ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.WARNING)
+    ch.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(process)d - %(levelname)s - %(filename)s:%(funcName)s - %(message)s')
     ch.setFormatter(formatter)
     # ch.addFilter(lambda record: record.levelno <= logging.)
@@ -82,7 +82,7 @@ def setEnv(args):
     #         cfg = yaml.load(ymlfile)
 
     with open(args.prop, 'r') as ymlfile:
-        cfg = yaml.load(ymlfile)
+        cfg = yaml.load(ymlfile,Loader=yaml.Loader)
     # for section in cfg:
     #     print(section)
     # print(cfg['mysql'])

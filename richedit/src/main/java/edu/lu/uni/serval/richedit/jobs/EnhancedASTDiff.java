@@ -88,6 +88,7 @@ public class EnhancedASTDiff {
 		}
 
 		Map<String, String> diffEntry;
+		innerPool.getResource().flushAll();
 		try (Jedis inner = innerPool.getResource()) {
 			diffEntry = inner.hgetAll("diffEntry");
 
