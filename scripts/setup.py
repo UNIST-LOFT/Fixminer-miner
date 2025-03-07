@@ -5,13 +5,14 @@ import sys
 import json
 import shutil
 import subprocess
+import multiprocessing as mp
 
-def shellGitCheckout(cmd,timeout =600,enc='utf-8'):
+def shellGitCheckout(cmd,timeout =600,enc='utf-8',cwd=os.getcwd()):
     output = ''
     errors = ''
     # logging.debug(cmd)
 
-    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True,encoding=enc) as p:
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True,encoding=enc,cwd=cwd) as p:
         try:
             output, errors = p.communicate(timeout=timeout)
         except subprocess.TimeoutExpired as t:
@@ -20,6 +21,11 @@ def shellGitCheckout(cmd,timeout =600,enc='utf-8'):
 
     return output,errors
 
+def is_template(tool:str):
+    if tool.lower() in ('tbar','avatar','kpar','fixminer'):
+        return True
+    else: return False
+
 arg_parser = argparse.ArgumentParser('setup.py')
 arg_parser.add_argument('tool',type=str,help='Name of the tool')
 arg_parser.add_argument('project_path',type=str,help='Path to the (buggy) project')
@@ -27,6 +33,7 @@ arg_parser.add_argument('patch_path',type=str,help='Path to the patches')
 arg_parser.add_argument('work_dir',type=str,help='Path to the working directory')
 arg_parser.add_argument('--fixminer-path',type=str,help='Path to the Fixminer miner repository',
                         required=False,default=os.getcwd())
+arg_parser.add_argument('-j','--parallel',type=int,help='Parallel job for each versions',default=1,required=False)
 
 args=arg_parser.parse_args(sys.argv[1:])
 tool:str = args.tool
@@ -81,15 +88,12 @@ fixminer:
 with open(os.path.join(work_dir,'config.yml'),'w') as f:
     f.write(body)
 
-# Copy orig and patched files, and generate diff files
-for version in os.listdir(patch_path):
-    if 'Mockito' in version:
-        continue
-
+def process(version):
     # Checkout the buggy version
     if os.path.exists(f'{project_path}/{version}'):
         shutil.rmtree(f'{project_path}/{version}')
-    res=subprocess.run(['defects4j','checkout','-p',version.split('_')[0],'-v',version.split('_')[1],'-w',f'{project_path}/{version}'],
+    print(f'Checkout {version}...')
+    res=subprocess.run(['defects4j','checkout','-p',version.split('_')[0],'-v',version.split('_')[1]+'b','-w',f'{project_path}/{version}'],
                        cwd=project_path,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
     if res.returncode!=0:
         print(res.stdout)
@@ -99,22 +103,27 @@ for version in os.listdir(patch_path):
         switch_info = json.load(f)['rules']
     
     for file in switch_info:
-        file_path=file['file']
+        if is_template(tool):
+            file_path=file['file_name']
+        else:
+            file_path=file['file']
+        print(f'Processing {version}:\t{file_path}...')
         for func in file['functions']:
             for line in func['lines']:
                 for p in line['cases']:
                     patch_loc=p['location']
                     file_name=f'{version}_{file_path.replace("/","#")}'
+                    patch_name=f'{version}_{patch_loc.replace("/","#")}'
                     
-                    shutil.copyfile(f'{project_path}/{version}/{file_path}',f'{work_dir}/patches/fuse/prevFiles/prev_{file_name}')
-                    shutil.copyfile(f'{patch_path}/{version}/{patch_loc}',f'{work_dir}/patches/fuse/revFiles/rev_{file_name}')
+                    shutil.copyfile(f'{project_path}/{version}/{file_path}',f'{work_dir}/patches/fuse/prevFiles/prev_{patch_name}')
+                    shutil.copyfile(f'{patch_path}/{version}/{patch_loc}',f'{work_dir}/patches/fuse/revFiles/rev_{patch_name}')
 
                     # Generate diff file with git diff
                     shutil.copyfile(f'{project_path}/{version}/{file_path}',f'{project_path}/{version}/{file_path}.orig')
                     shutil.copyfile(f'{patch_path}/{version}/{patch_loc}',f'{project_path}/{version}/{file_path}')
                     cmd = 'git diff'# + shaOld + ':' + filePath + '..' + sha + ':' + filePath  # + '> ' + folderDiff + '/' + sha + '_' + shaOld + '_' + savePath.replace('.java','.txt')
 
-                    output,errors = shellGitCheckout(cmd,'latin1')
+                    output,errors = shellGitCheckout(cmd,enc='latin1',cwd=f'{project_path}/{version}')
                     if errors:
                         raise FileNotFoundError
 
@@ -129,10 +138,19 @@ for version in os.listdir(patch_path):
                     if len(numberOfHunks) == 0:
                         print('re.findall not found')
                         exit(1)
-                    diffFile = file_name + '\n' + matched.replace(' @@ ', ' @@\n')
-                    with open(f'{work_dir}/patches/fuse/DiffEntries/{file_name}.txt','w') as writeFile:
+                    diffFile = file_path + '\n' + matched.replace(' @@ ', ' @@\n')
+                    with open(f'{work_dir}/patches/fuse/DiffEntries/{patch_name}.txt','w') as writeFile:
                         writeFile.writelines(diffFile)
 
                     # Rollback the patches
                     shutil.copyfile(f'{project_path}/{version}/{file_path}.orig',f'{project_path}/{version}/{file_path}')
                     os.remove(f'{project_path}/{version}/{file_path}.orig')
+
+# Copy orig and patched files, and generate diff files in parallel
+pool=mp.Pool(args.parallel)
+for version in os.listdir(patch_path):
+    if 'Mockito' in version:
+        continue
+    res=pool.apply_async(process,[version,])
+pool.close()
+pool.join()
