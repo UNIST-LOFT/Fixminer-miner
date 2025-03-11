@@ -6,6 +6,7 @@ import json
 import shutil
 import subprocess
 import multiprocessing as mp
+import logging
 
 def shellGitCheckout(cmd,timeout =600,enc='utf-8',cwd=os.getcwd()):
     output = ''
@@ -41,6 +42,9 @@ project_path:str = args.project_path
 patch_path:str = args.patch_path
 work_dir:str = args.work_dir
 fixminer_path:str = args.fixminer_path
+
+logger=logging.getLogger(__name__)
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',level=logging.DEBUG)
 
 # Generate required directories
 if os.path.exists(work_dir):
@@ -89,14 +93,15 @@ with open(os.path.join(work_dir,'config.yml'),'w') as f:
     f.write(body)
 
 def process(version):
+    global logger
     # Checkout the buggy version
     if os.path.exists(f'{project_path}/{version}'):
         shutil.rmtree(f'{project_path}/{version}')
-    print(f'Checkout {version}...')
+    logger.info(f'Checkout {version}...')
     res=subprocess.run(['defects4j','checkout','-p',version.split('_')[0],'-v',version.split('_')[1]+'b','-w',f'{project_path}/{version}'],
                        cwd=project_path,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
     if res.returncode!=0:
-        print(res.stdout)
+        logger.warning(res.stdout)
         raise Exception(f'Failed to checkout {version}')
     
     with open(f'{patch_path}/{version}/switch-info.json') as f:
@@ -107,7 +112,7 @@ def process(version):
             file_path=file['file_name']
         else:
             file_path=file['file']
-        print(f'Processing {version}:\t{file_path}...')
+        logger.info(f'Processing {version}:\t{file_path}...')
         for func in file['functions']:
             for line in func['lines']:
                 for p in line['cases']:
@@ -116,7 +121,7 @@ def process(version):
                     patch_name=f'{version}_{patch_loc.replace("/","#")}'
                     
                     shutil.copyfile(f'{project_path}/{version}/{file_path}',f'{work_dir}/patches/fuse/prevFiles/prev_{patch_name}')
-                    shutil.copyfile(f'{patch_path}/{version}/{patch_loc}',f'{work_dir}/patches/fuse/revFiles/rev_{patch_name}')
+                    shutil.copyfile(f'{patch_path}/{version}/{patch_loc}',f'{work_dir}/patches/fuse/revFiles/{patch_name}')
 
                     # Generate diff file with git diff
                     shutil.copyfile(f'{project_path}/{version}/{file_path}',f'{project_path}/{version}/{file_path}.orig')
@@ -131,12 +136,12 @@ def process(version):
                     regex = r"@@\s\-\d+,*\d*\s\+\d+,*\d*\s@@ ?(.*\n)*"
                     match = re.search(regex, output)
                     if not match:
-                        print('re.search not found')
+                        logger.error('re.search not found')
                         exit(1)
                     not_matched, matched = output[:match.start()], match.group()
-                    numberOfHunks = re.findall('@@\s\-\d+,*\d*\s\+\d+,*\d*\s@@', matched)
+                    numberOfHunks = re.findall(r'@@\s\-\d+,*\d*\s\+\d+,*\d*\s@@', matched)
                     if len(numberOfHunks) == 0:
-                        print('re.findall not found')
+                        logger.error('re.findall not found')
                         exit(1)
                     diffFile = file_path + '\n' + matched.replace(' @@ ', ' @@\n')
                     with open(f'{work_dir}/patches/fuse/DiffEntries/{patch_name}.txt','w') as writeFile:
@@ -151,6 +156,6 @@ pool=mp.Pool(args.parallel)
 for version in os.listdir(patch_path):
     if 'Mockito' in version:
         continue
-    res=pool.apply_async(process,[version,])
+    pool.apply_async(process,(version,))
 pool.close()
 pool.join()

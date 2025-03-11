@@ -50,7 +50,14 @@ Fixminer is a systematic and automated approach to mine relevant and actionable 
   ```
 * After creating the environment, activate it. It is containing necessary dependencies for redis, and python.
   ```powershell
-  source activate fixminerEnv
+  conda activate fixminerEnv
+  ```
+
+* Install and start Redis
+  ```bash
+  apt-get install redis
+  service redis-server start
+  redis-cli # Check redis is installed correctly, Ctrl+D to quit client
   ```
 
 * Update the config.yml file with the corresponding paths in your computer. An example config.yml file could be found under
@@ -77,11 +84,11 @@ In order to launch FixMiner, execute [fixminer.sh](python/fixminer.sh)
 
 * Install the project with maven from root. (usage [pom.xml](pom.xml))
   ```powershell
-  mvn clean install
+  mvn -DskipTests clean install
   ```
 * Active the conda environment from shell
   ```powershell
-  source activate fixminerEnv
+  conda activate fixminerEnv
   ```
 
 In order to launch FixMiner, execute [fixminer.sh](python/fixminer.sh)
@@ -96,6 +103,8 @@ A log file (app.log) is created after every execution of the [fixminer.sh]((pyth
 #### Job Types  
 
 *FixMiner* needs to follow an execution, **in the order listed below** in order to create clusters of patches.
+
+If the dataset already set, skip the step 1.
 
    1. __dataset4j__ / __dataset4c__: Create a java/c mining dataset from the projects listed in [subjects.csv](python/data/subjects.csv) or [datasets.csv](python/data/datasets.csv) for c
       
