@@ -43,8 +43,11 @@ patch_path:str = args.patch_path
 work_dir:str = args.work_dir
 fixminer_path:str = args.fixminer_path
 
-logger=logging.getLogger(__name__)
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',level=logging.DEBUG,
+                    handlers=[
+                        logging.StreamHandler(),
+                        logging.FileHandler('scripts/setup.log')                     
+                    ])
 
 # Generate required directories
 if os.path.exists(work_dir):
@@ -93,15 +96,14 @@ with open(os.path.join(work_dir,'config.yml'),'w') as f:
     f.write(body)
 
 def process(version):
-    global logger
     # Checkout the buggy version
     if os.path.exists(f'{project_path}/{version}'):
         shutil.rmtree(f'{project_path}/{version}')
-    logger.info(f'Checkout {version}...')
+    logging.info(f'Checkout {version}...')
     res=subprocess.run(['defects4j','checkout','-p',version.split('_')[0],'-v',version.split('_')[1]+'b','-w',f'{project_path}/{version}'],
                        cwd=project_path,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
     if res.returncode!=0:
-        logger.warning(res.stdout)
+        logging.warning(res.stdout)
         raise Exception(f'Failed to checkout {version}')
     
     with open(f'{patch_path}/{version}/switch-info.json') as f:
@@ -112,8 +114,9 @@ def process(version):
             file_path=file['file_name']
         else:
             file_path=file['file']
-        logger.info(f'Processing {version}:\t{file_path}...')
+        logging.info(f'Processing file: {version}:\t{file_path}...')
         for func in file['functions']:
+            logging.info(f'Processing method: {version}:{file_path}:{func["function"]}...')
             for line in func['lines']:
                 for p in line['cases']:
                     patch_loc=p['location']
@@ -136,12 +139,12 @@ def process(version):
                     regex = r"@@\s\-\d+,*\d*\s\+\d+,*\d*\s@@ ?(.*\n)*"
                     match = re.search(regex, output)
                     if not match:
-                        logger.error('re.search not found')
+                        logging.error('re.search not found')
                         exit(1)
                     not_matched, matched = output[:match.start()], match.group()
                     numberOfHunks = re.findall(r'@@\s\-\d+,*\d*\s\+\d+,*\d*\s@@', matched)
                     if len(numberOfHunks) == 0:
-                        logger.error('re.findall not found')
+                        logging.error('re.findall not found')
                         exit(1)
                     diffFile = file_path + '\n' + matched.replace(' @@ ', ' @@\n')
                     with open(f'{work_dir}/patches/fuse/DiffEntries/{patch_name}.txt','w') as writeFile:
@@ -150,6 +153,8 @@ def process(version):
                     # Rollback the patches
                     shutil.copyfile(f'{project_path}/{version}/{file_path}.orig',f'{project_path}/{version}/{file_path}')
                     os.remove(f'{project_path}/{version}/{file_path}.orig')
+
+            logging.info(f'Method processed! {version}:{file_path}:{func["function"]}...')
 
 # Copy orig and patched files, and generate diff files in parallel
 pool=mp.Pool(args.parallel)
