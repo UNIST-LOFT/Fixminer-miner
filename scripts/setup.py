@@ -133,19 +133,34 @@ def process(version):
 
                     output,errors = shellGitCheckout(cmd,enc='latin1',cwd=f'{project_path}/{version}')
                     if errors:
-                        raise FileNotFoundError
+                        logging.error(f'git diff error at {version}:{func["function"]}:{patch_loc}:\n{errors}')
+                        shutil.copyfile(f'{project_path}/{version}/{file_path}.orig',f'{project_path}/{version}/{file_path}')
+                        os.remove(f'{project_path}/{version}/{file_path}.orig')
+                        os.remove(f'{work_dir}/patches/fuse/prevFiles/prev_{patch_name}')
+                        os.remove(f'{work_dir}/patches/fuse/revFiles/{patch_name}')
+                        continue
 
                     # Parse the diff
                     regex = r"@@\s\-\d+,*\d*\s\+\d+,*\d*\s@@ ?(.*\n)*"
                     match = re.search(regex, output)
                     if not match:
-                        logging.error('re.search not found')
-                        exit(1)
+                        logging.error(f're.search not found at {version}:{func["function"]}:{patch_loc}')
+                        shutil.copyfile(f'{project_path}/{version}/{file_path}.orig',f'{project_path}/{version}/{file_path}')
+                        os.remove(f'{project_path}/{version}/{file_path}.orig')
+                        os.remove(f'{work_dir}/patches/fuse/prevFiles/prev_{patch_name}')
+                        os.remove(f'{work_dir}/patches/fuse/revFiles/{patch_name}')
+                        continue
+
                     not_matched, matched = output[:match.start()], match.group()
                     numberOfHunks = re.findall(r'@@\s\-\d+,*\d*\s\+\d+,*\d*\s@@', matched)
                     if len(numberOfHunks) == 0:
-                        logging.error('re.findall not found')
-                        exit(1)
+                        logging.error(f're.findall not found at {version}:{func["function"]}:{patch_loc}')
+                        shutil.copyfile(f'{project_path}/{version}/{file_path}.orig',f'{project_path}/{version}/{file_path}')
+                        os.remove(f'{project_path}/{version}/{file_path}.orig')
+                        os.remove(f'{work_dir}/patches/fuse/prevFiles/prev_{patch_name}')
+                        os.remove(f'{work_dir}/patches/fuse/revFiles/{patch_name}')
+                        continue
+
                     diffFile = file_path + '\n' + matched.replace(' @@ ', ' @@\n')
                     with open(f'{work_dir}/patches/fuse/DiffEntries/{patch_name}.txt','w') as writeFile:
                         writeFile.writelines(diffFile)
