@@ -104,7 +104,6 @@ public class EnhancedASTDiff {
 				parallel(),"Task").
 				forEach(m ->
 						{
-							log.debug("Processing {}...", m.getRevFile());
 							EDiffHunkParser parser =  new EDiffHunkParser();
 							parser.parseFixPatterns(m.getPrevFile(),m.getRevFile(), m.getDiffEntryFile(),project,innerPool,srcMLPath,hunkLimit, finalIsJava);
 						}
