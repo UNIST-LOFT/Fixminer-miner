@@ -104,6 +104,7 @@ public class EnhancedASTDiff {
 				parallel(),"Task").
 				forEach(m ->
 						{
+							log.debug("Processing {}...", m.getRevFile());
 							EDiffHunkParser parser =  new EDiffHunkParser();
 							parser.parseFixPatterns(m.getPrevFile(),m.getRevFile(), m.getDiffEntryFile(),project,innerPool,srcMLPath,hunkLimit, finalIsJava);
 						}
@@ -144,6 +145,7 @@ public class EnhancedASTDiff {
 				File diffentryFile = new File(gumTreeInput + "DiffEntries/" + fileName); // DiffEntry file
 				String s = FileHelper.readFile(diffentryFile);
 
+				log.debug("Parsing {}...", fileName);				
 				Pattern pattern = Pattern.compile("^[\\+|\\-]\\s*",Pattern.MULTILINE);
 				Matcher matcher = pattern.matcher(s);
 				int count = 0;
@@ -156,6 +158,7 @@ public class EnhancedASTDiff {
 //					continue;
 
 //				String datasetName = project;
+				log.debug("{} parsed!", fileName);
 				String[] split1 = diffentryFile.getParent().split(datasetName);
 				String root = split1[0];
 				String pj = split1[1].split("/")[1];

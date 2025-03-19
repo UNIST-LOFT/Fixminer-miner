@@ -13,7 +13,7 @@ import re
 import pandas as pd
 from os.path import isfile, join, isdir
 import pickle as p
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 from subprocess import CalledProcessError
 from subprocess import TimeoutExpired
 import pickle as p
@@ -198,14 +198,15 @@ def shellCallTemplate4jar(cmd,enc='utf-8'):
 def shellCallTemplate(cmd,enc='utf-8'):
     try:
         logging.info(cmd)
-        with Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True,encoding=enc) as p:
+        with Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True,encoding=enc) as p:
+            for line in p.stdout:
+                print(line,end='')
             output, errors = p.communicate()
             # print(output)
             if errors:
                 m = re.search('unknown revision or path not in the working tree', errors)
                 if not m:
                     raise CalledProcessError(errors, '-1')
-            output
     except CalledProcessError as e:
         logging.error(errors)
     except Exception as e:
