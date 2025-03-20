@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import multiprocessing as mp
 import logging
+from typing import List
 
 def shellGitCheckout(cmd,timeout =600,enc='utf-8',cwd=os.getcwd()):
     output = ''
@@ -35,6 +36,7 @@ arg_parser.add_argument('work_dir',type=str,help='Path to the working directory'
 arg_parser.add_argument('--fixminer-path',type=str,help='Path to the Fixminer miner repository',
                         required=False,default=os.getcwd())
 arg_parser.add_argument('-j','--parallel',type=int,help='Parallel job for each versions',default=1,required=False)
+arg_parser.add_argument('version',help='Bugs to setup',nargs='+')
 
 args=arg_parser.parse_args(sys.argv[1:])
 tool:str = args.tool
@@ -42,6 +44,7 @@ project_path:str = args.project_path
 patch_path:str = args.patch_path
 work_dir:str = args.work_dir
 fixminer_path:str = args.fixminer_path
+versions:List[str] = args.version
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',level=logging.DEBUG,
                     handlers=[
@@ -175,6 +178,8 @@ def process(version):
 pool=mp.Pool(args.parallel)
 for version in os.listdir(patch_path):
     if 'Mockito' in version:
+        continue
+    if versions and version not in versions:
         continue
     pool.apply_async(process,(version,))
 pool.close()
